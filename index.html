@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Perancangan Program Unit HIV, STI & Hep C - PKD Kepong</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PapaParse CSV Parser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        kkm: {
+                            blue: '#003366',
+                            teal: '#008080',
+                            red: '#D90429',
+                            dark: '#1E293B',
+                            light: '#F8FAFC'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar styling for better presentation */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Top Bar Navigation -->
+    <header class="bg-gradient-to-r from-slate-900 via-teal-900 to-slate-900 text-white shadow-lg sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                
+                <!-- Title & Health Office Info -->
+                <div class="flex items-center space-x-3.5">
+                    <div class="w-11 h-11 bg-white/10 backdrop-blur rounded-xl border border-white/20 flex items-center justify-center text-teal-400 text-xl font-bold shadow-inner">
+                        <i class="fa-solid me-0.5 fa-ribbon text-red-500"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="bg-red-600 text-white text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full">Sistem Pemantauan</span>
+                            <span class="text-xs text-teal-200 font-medium">PKD KEPONG</span>
+                        </div>
+                        <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white leading-tight">
+                            Unit HIV, STI & Hepatitis C
+                        </h1>
+                        <p class="text-xs text-slate-300">Dashboard Perancangan & Pemantauan Program Tahunan</p>
+                    </div>
+                </div>
+
+                <!-- Unit Head Profile Badge & Live Data Controls -->
+                <div class="flex items-center justify-between md:justify-end gap-3 border-t md:border-t-0 border-white/10 pt-2 md:pt-0">
+                    <div class="hidden lg:flex flex-col text-right pr-3 border-r border-white/10">
+                        <span class="text-xs font-semibold text-slate-200">Ketua Unit & Pegawai Perancang</span>
+                        <span class="text-[11px] text-teal-300">Sektor Kawalan Penyakit (CDC)</span>
+                    </div>
+
+                    <!-- Sync Status Indicator -->
+                    <div id="syncStatus" class="flex items-center text-xs bg-slate-800/80 border border-slate-700/60 rounded-lg px-3 py-1.5 space-x-2">
+                        <span id="syncDot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+                        <span id="syncText" class="text-slate-300 font-medium">Memuat Data Google Sheets...</span>
+                    </div>
+
+                    <!-- Refresh Button -->
+                    <button onclick="fetchSheetData()" class="p-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg transition text-xs font-medium flex items-center gap-1.5 shadow-sm active:scale-95">
+                        <i class="fa-solid fa-rotate" id="refreshIcon"></i>
+                        <span class="hidden sm:inline">Muat Semula</span>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Key Performance Indicators (KPI Cards) -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            <!-- Card 1: Total Programs -->
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 flex flex-col justify-between hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Jumlah Program</p>
+                        <h3 class="text-3xl font-extrabold text-slate-800 mt-1" id="kpiTotalProg">-</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-teal-50 text-teal-700 rounded-xl flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-list-check"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-xs text-slate-500">
+                    <span class="text-teal-600 font-semibold flex items-center gap-1 mr-1.5" id="kpiTargetYear">
+                        <i class="fa-solid fa-calendar-check"></i> Takwim 2026
+                    </span>
+                    <span>dirancang di PKD Kepong</span>
+                </div>
+            </div>
+
+            <!-- Card 2: Completed / Progress Status -->
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 flex flex-col justify-between hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Program Selesai</p>
+                        <h3 class="text-3xl font-extrabold text-emerald-600 mt-1" id="kpiCompleted">-</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                </div>
+                <div class="mt-3 text-xs text-slate-500 flex items-center justify-between">
+                    <span>Kadar Pelaksanaan:</span>
+                    <span class="font-bold text-slate-700" id="kpiCompletionRate">0%</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden">
+                    <div id="kpiProgressBar" class="bg-emerald-500 h-1.5 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Card 3: Program Belum Selesai -->
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 flex flex-col justify-between hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Program Belum Selesai</p>
+                        <h3 class="text-3xl font-extrabold text-amber-600 mt-1" id="kpiPendingCount">-</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                    </div>
+                </div>
+                <div class="mt-3 text-xs text-slate-500 flex items-center justify-between">
+                    <span>Aktif & Perancangan:</span>
+                    <span class="font-bold text-slate-700" id="kpiPendingSubtext">-</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden">
+                    <div id="kpiPendingBar" class="bg-amber-500 h-1.5 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Card 4: Total Budget Allocated (Lajur BAJET) -->
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 flex flex-col justify-between hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Jumlah Peruntukan Bajet</p>
+                        <h3 class="text-2xl font-extrabold text-indigo-700 mt-1" id="kpiTotalBudget">RM 0</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-hand-holding-dollar"></i>
+                    </div>
+                </div>
+                <div class="mt-3 text-xs text-slate-500 flex items-center justify-between">
+                    <span>Jumlah Keseluruhan Bajet Program</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden">
+                    <div class="bg-indigo-600 h-1.5 rounded-full" style="width: 100%"></div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Interactive Controls & Filters -->
+        <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-5">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                
+                <!-- Search Input -->
+                <div class="relative flex-1 min-w-[240px]">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input type="text" id="searchInput" placeholder="Cari nama program, lokasi, atau pegawai (PIC)..."
+                        class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition">
+                </div>
+
+                <!-- Filter Dropdowns -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                    
+                    <!-- Kategori Filter -->
+                    <div>
+                        <select id="filterKategori" class="w-full py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                            <option value="ALL">Semua Kategori (HIV/STI/HepC)</option>
+                            <option value="HIV">HIV Sahaja</option>
+                            <option value="STI">STI Sahaja</option>
+                            <option value="Hep C">Hepatitis C Sahaja</option>
+                            <option value="Gabungan">Gabungan / Am</option>
+                        </select>
+                    </div>
+
+                    <!-- Status Filter -->
+                    <div>
+                        <select id="filterStatus" class="w-full py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                            <option value="ALL">Semua Status (Lajur STATUS)</option>
+                        </select>
+                    </div>
+
+                    <!-- Reset Filters Button -->
+                    <div class="col-span-2 sm:col-span-1">
+                        <button onclick="resetFilters()" class="w-full py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1.5 border border-slate-200">
+                            <i class="fa-solid fa-filter-circle-xmark"></i>
+                            <span>Reset Penapis</span>
+                        </button>
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Charts Grid Section -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- Chart 1: Status Pelaksanaan Program (Doughnut) -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-800">Status Pelaksanaan Program</h3>
+                        <p class="text-xs text-slate-500">Nisbah kemajuan program Unit</p>
+                    </div>
+                    <span class="text-slate-400 text-sm"><i class="fa-solid fa-chart-pie"></i></span>
+                </div>
+                <div class="relative flex items-center justify-center my-auto min-h-[220px]">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Chart 2: Agihan Bahagian Bertanggungjawab (Bar Chart) -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-800">Agihan Bahagian Bertanggungjawab</h3>
+                        <p class="text-xs text-slate-500">Bilangan program mengikut bahagian / unit</p>
+                    </div>
+                    <span class="text-slate-400 text-sm"><i class="fa-solid fa-chart-column"></i></span>
+                </div>
+                <div class="relative min-h-[220px]">
+                    <canvas id="kategoriChart"></canvas>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Main Data Table Section -->
+        <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            
+            <!-- Table Header Bar -->
+            <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
+                <div>
+                    <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-calendar-days text-teal-600"></i>
+                        Senarai Perancangan Program & Aktiviti
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Jadual terperinci pelan tindakan Unit HIV, STI & Hep C PKD Kepong</p>
+                </div>
+                
+                <div class="flex items-center space-x-2">
+                    <span class="text-xs text-slate-500 font-medium" id="recordCounter">Menampilkan 0 program</span>
+                    <button onclick="exportCSV()" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-download"></i> Export CSV
+                    </button>
+                </div>
+            </div>
+
+            <!-- Responsive Table Wrapper -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100/80 text-slate-600 text-[11px] uppercase tracking-wider font-bold border-b border-slate-200">
+                            <th class="py-3 px-4">Nama Program / Aktiviti</th>
+                            <th class="py-3 px-3">Kategori</th>
+                            <th class="py-3 px-3">Tarikh</th>
+                            <th class="py-3 px-3">Lokasi</th>
+                            <th class="py-3 px-3">Yang Bertanggungjawab</th>
+                            <th class="py-3 px-3 text-right">Bajet (RM)</th>
+                            <th class="py-3 px-3 text-right">Perbelanjaan (RM)</th>
+                            <th class="py-3 px-3 text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="programTableBody" class="divide-y divide-slate-200 text-xs text-slate-700">
+                        <!-- Table rows populated dynamically -->
+                        <tr>
+                            <td colspan="8" class="text-center py-12 text-slate-400">
+                                <i class="fa-solid fa-circle-notch fa-spin text-2xl mb-2 text-teal-600"></i>
+                                <p>Memuatkan jadual program...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </section>
+
+        <!-- Visual Timeline / Quick Action Grid -->
+        <section class="bg-gradient-to-br from-slate-900 via-teal-950 to-slate-900 rounded-xl p-5 text-white shadow-md">
+            <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
+                <div>
+                    <h3 class="text-sm font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-bullhorn text-red-400"></i>
+                        Fokus Utama Strategi Pelaksanaan Unit HIV/STI/Hep C PKD Kepong
+                    </h3>
+                    <p class="text-xs text-slate-300 mt-0.5">Panduan Pelan Strategik Eliminasi HIV & Hep C Kebangsaan</p>
+                </div>
+                <div class="flex items-center space-x-2 text-xs">
+                    <span class="bg-teal-500/20 border border-teal-400/30 text-teal-300 px-2.5 py-1 rounded-md">Pencapaian KPI PKD</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-white/10 text-xs">
+                <div class="bg-white/5 p-3.5 rounded-lg border border-white/10">
+                    <div class="font-bold text-teal-300 mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-vial-virus text-red-400"></i> Outreach & Saringan Akses Komuniti
+                    </div>
+                    <p class="text-slate-300 leading-relaxed">
+                        Pengukuhan saringan HIV kendiri (Self-Test), saringan STI berkala, serta ujian Point-of-Care Hepatitis C di fasiliti primer & lapangan PPR Batu Muda & Jinjang.
+                    </p>
+                </div>
+
+                <div class="bg-white/5 p-3.5 rounded-lg border border-white/10">
+                    <div class="font-bold text-teal-300 mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-pills text-blue-400"></i> Linkage To Care & PrEP/PEP
+                    </div>
+                    <p class="text-slate-300 leading-relaxed">
+                        Memastikan 100% kes sah HIV dirujuk untuk rawatan ARV dalam masa &lt; 14 hari, serta pemantauan pematuhan PrEP di Klinik Kesihatan Kepong.
+                    </p>
+                </div>
+
+                <div class="bg-white/5 p-3.5 rounded-lg border border-white/10">
+                    <div class="font-bold text-teal-300 mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-graduation-cap text-amber-400"></i> Latihan & Advocacy Stigma Zero
+                    </div>
+                    <p class="text-slate-300 leading-relaxed">
+                        Latihan berterusan kepada anggota kesihatan, rakan strategik NGO, serta advokasi kesedaran tanpa diskriminasi di fasiliti kesihatan.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Program Detail Modal -->
+    <div id="detailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full overflow-hidden animate-fade-in">
+            <div class="bg-slate-900 text-white p-5 flex items-center justify-between">
+                <div>
+                    <span id="modalKategoriBadge" class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-teal-600 text-white">HIV</span>
+                    <h3 id="modalTitle" class="text-base font-bold mt-1">Nama Program Detail</h3>
+                </div>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white transition text-lg p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 space-y-4 text-xs text-slate-700">
+                <div class="grid grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <div>
+                        <span class="text-slate-400 block font-semibold uppercase text-[10px]">Tarikh Pelaksanaan</span>
+                        <span id="modalTarikh" class="font-bold text-slate-800 text-sm">-</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block font-semibold uppercase text-[10px]">Status Program</span>
+                        <span id="modalStatus" class="font-bold text-slate-800 text-sm">-</span>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <div>
+                        <span class="text-slate-500 font-semibold block"><i class="fa-solid fa-location-dot text-teal-600 mr-1"></i> Lokasi:</span>
+                        <p id="modalLokasi" class="font-medium text-slate-800 bg-slate-50 p-2 rounded border border-slate-200">-</p>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 font-semibold block"><i class="fa-solid fa-user-doctor text-teal-600 mr-1"></i> Yang Bertanggungjawab:</span>
+                        <p id="modalPIC" class="font-medium text-slate-800 bg-slate-50 p-2 rounded border border-slate-200">-</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 pt-2">
+                    <div class="p-3 bg-indigo-50/70 border border-indigo-200 rounded-lg">
+                        <span class="text-indigo-600 font-semibold text-[11px]">Peruntukan Bajet</span>
+                        <p class="text-sm font-bold text-indigo-900 mt-0.5" id="modalBajet">-</p>
+                    </div>
+                    <div class="p-3 bg-emerald-50/70 border border-emerald-200 rounded-lg">
+                        <span class="text-emerald-600 font-semibold text-[11px]">Perbelanjaan Sebenar</span>
+                        <p class="text-sm font-bold text-emerald-900 mt-0.5" id="modalPerbelanjaan">-</p>
+                    </div>
+                </div>
+
+                <div>
+                    <span class="text-slate-500 font-semibold block"><i class="fa-solid fa-clipboard text-teal-600 mr-1"></i> Catatan & Objektif:</span>
+                    <p id="modalCatatan" class="text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-200 leading-relaxed font-normal mt-1 min-h-[60px]">
+                        -
+                    </p>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 px-6 py-3.5 border-t border-slate-200 flex justify-end">
+                <button onclick="closeModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-semibold transition">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+            <p>© 2026 Unit HIV, STI & Hepatitis C — Pejabat Kesihatan Daerah Kepong.</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">Sistem Pengurusan & Pemantauan Program Kesihatan Awam Kebangsaan</p>
+        </div>
+    </footer>
+
+    <script>
+        // Published Google Sheets CSV URL
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRxBdWLChEqoDXp1-A0HyjrhiSZ0cKRBf7Nh0HCdKWqSrX-gQe0nhV-DYB-PFncfoUp1TjtDZ7ABnLY/pub?gid=1377155708&single=true&output=csv';
+
+        // Sample / Fallback Data tailored specifically for Unit HIV, STI & Hep C PKD Kepong
+        const FALLBACK_PROGRAMS = [
+            {
+                id: 1,
+                nama: "Kempen Saringan HIV Kendiri & STI Komuniti Komuniti PPR Batu Muda",
+                kategori: "HIV",
+                tarikh: "2026-02-15",
+                lokasi: "Dewan Orang Ramai PPR Batu Muda, Kepong",
+                pic: "Dr. Nurul Huda / PPKP Ahmad",
+                sasaran: 250,
+                capaian: 210,
+                bajet: 3500,
+                perbelanjaan: 3200,
+                status: "Selesai",
+                catatan: "Saringan percuma, edaran kit HIV self-test dan khidmat kaunseling pengurangan risiko."
+            },
+            {
+                id: 2,
+                nama: "Program Eliminasi Hepatitis C: Ujian Point-of-Care Ujian Berkelompok",
+                kategori: "Hep C",
+                tarikh: "2026-03-10",
+                lokasi: "Klinik Kesihatan Kepong",
+                pic: "Dr. Kelvin Tan / KUP Rahmah",
+                sasaran: 150,
+                capaian: 145,
+                bajet: 5000,
+                perbelanjaan: 4850,
+                status: "Selesai",
+                catatan: "Ujian cepat Finger-prick Rapid Test Hep C, pencarian kes aktif dan rujukan rawatan DAA terus."
+            },
+            {
+                id: 3,
+                nama: "Bengkel Pengurusan Kes STI & Contact Tracing Pasangan",
+                kategori: "STI",
+                tarikh: "2026-04-18",
+                lokasi: "Bilik Mesyuarat Utama PKD Kepong",
+                pic: "PPKP Zulkifli / Dr. Nurul Huda",
+                sasaran: 40,
+                capaian: 40,
+                bajet: 1800,
+                perbelanjaan: 1750,
+                status: "Selesai",
+                catatan: "Latihan pemantapan penjejakan pasangan kes Syphilis, Gonorrhoea & Chlamydia bagi anggota kesihatan."
+            },
+            {
+                id: 4,
+                nama: "Outreach & Edaran Materials Harm Reduction (NSEP) Segambut",
+                kategori: "HIV",
+                tarikh: "2026-05-22",
+                lokasi: "Kawasan Hotspot Segambut & Jinjang",
+                pic: "PPKP Razak / NGO Partner",
+                sasaran: 180,
+                capaian: 160,
+                bajet: 2800,
+                perbelanjaan: 1200,
+                status: "Sedang Berlangsung",
+                catatan: "Program pengurangan kemudaratan, edaran brosur PrEP & pembuangan jarum selamat bersama NGO."
+            },
+            {
+                id: 5,
+                nama: "Latihan Advokasi Stigma Zero & PrEP Kesihatan Primer",
+                kategori: "Gabungan",
+                tarikh: "2026-06-12",
+                lokasi: "Dewan Auditorium KK Jinjang",
+                pic: "Dr. Siti Sarah / Pegawai Farmasi",
+                sasaran: 60,
+                capaian: 0,
+                bajet: 2200,
+                perbelanjaan: 0,
+                status: "Dalam Perancangan",
+                catatan: "Latihan peningkatan kapasiti pegawai perubatan dan jururawat dalam pemberian pendedahan PrEP HIV."
+            },
+            {
+                id: 6,
+                nama: "Program Saringan Hep C & HIV Ibu Hamil & Pasangan",
+                kategori: "Hep C",
+                tarikh: "2026-07-08",
+                lokasi: "Klinik Ibu dan Anak (KIA) KK Kepong",
+                pic: "KUP Hafizah / Dr. Nurul",
+                sasaran: 300,
+                capaian: 0,
+                bajet: 4000,
+                perbelanjaan: 0,
+                status: "Dalam Perancangan",
+                catatan: "Pencegahan Penularan Ibu Ke Anak (MTCT) bagi HIV, Syphilis dan Hepatitis B/C."
+            },
+            {
+                id: 7,
+                nama: "Sambutan Hari AIDS Sedunia Peringkat Daerah Kepong 2026",
+                kategori: "HIV",
+                tarikh: "2026-12-01",
+                lokasi: "Pusat Komuniti Manjalara Kepong",
+                pic: "Ketua Unit CDC / Semua Warga Unit",
+                sasaran: 500,
+                capaian: 0,
+                bajet: 8500,
+                perbelanjaan: 0,
+                status: "Dalam Perancangan",
+                catatan: "Acara kemuncak tahunan, pameran interaktif, larian kesedaran 'Red Ribbon Run' dan forum belia."
+            },
+            {
+                id: 8,
+                nama: "Audit Lapangan Premis Refleksologi & Saringan Health Screening",
+                kategori: "STI",
+                tarikh: "2026-08-20",
+                lokasi: "Zon Premis Perniagaan Kepong Baru",
+                pic: "PPKP Hafiz / Unit Inspektorat",
+                sasaran: 80,
+                capaian: 0,
+                bajet: 1500,
+                perbelanjaan: 0,
+                status: "Ditangguh",
+                catatan: "Saringan kesihatan sukarela & pemeriksaan premis berkala ditangguhkan ke suku ke-4."
+            }
+        ];
+
+        // Global State
+        let rawProgramData = [];
+        let filteredData = [];
+        let chartsInstance = {};
+
+        // On DOM Loaded
+        document.addEventListener("DOMContentLoaded", () => {
+            initSearchAndFilters();
+            fetchSheetData();
+        });
+
+        // Fetch Data Function from Google Sheets CSV with Fallback logic
+        async function fetchSheetData() {
+            const syncDot = document.getElementById("syncDot");
+            const syncText = document.getElementById("syncText");
+            const refreshIcon = document.getElementById("refreshIcon");
+
+            syncDot.className = "w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse";
+            syncText.innerText = "Memuatkan data CSV...";
+            refreshIcon.classList.add("fa-spin");
+
+            try {
+                // Fetch directly from Google Sheets CSV link
+                const response = await fetch(CSV_URL, { cache: 'no-cache' });
+                if (!response.ok) throw new Error("Gagal menyambung ke Google Sheets");
+                
+                const csvText = await response.text();
+                
+                // Parse CSV using PapaParse
+                Papa.parse(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        if (results.data && results.data.length > 0) {
+                            rawProgramData = parseCSVToPrograms(results.data);
+                            syncDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500";
+                            syncText.innerText = "Data Terkini (Google Sheet)";
+                        } else {
+                            throw new Error("Data CSV kosong");
+                        }
+                        updateDashboard();
+                    },
+                    error: function(err) {
+                        throw err;
+                    }
+                });
+
+            } catch (error) {
+                console.warn("Menggunakan data fallback tempatan akibat pautan/CORS:", error);
+                rawProgramData = [...FALLBACK_PROGRAMS];
+                syncDot.className = "w-2.5 h-2.5 rounded-full bg-blue-500";
+                syncText.innerText = "Data Modul Tempatan (Pra-Set)";
+                updateDashboard();
+            } finally {
+                refreshIcon.classList.remove("fa-spin");
+            }
+        }
+
+        // Helper to parse currency strings (e.g. "RM 1,500.00" -> 1500)
+        function parseCurrency(val) {
+            if (val === undefined || val === null || val === "") return 0;
+            const cleaned = String(val).replace(/[^0-9.-]/g, '');
+            const num = parseFloat(cleaned);
+            return isNaN(num) ? 0 : num;
+        }
+
+        // Normalize CSV fields to standard format
+        function parseCSVToPrograms(csvRows) {
+            return csvRows.map((row, index) => {
+                // Flexibly detect header key variations
+                const getVal = (keys) => {
+                    for (let k of keys) {
+                        const found = Object.keys(row).find(key => key.trim().toUpperCase() === k.toUpperCase());
+                        if (found && row[found] !== undefined && row[found] !== "") return row[found].trim();
+                    }
+                    return "";
+                };
+
+                const nama = getVal(["Nama Program", "Program", "Aktiviti", "Nama Aktiviti", "Tajuk"]) || `Program ${index + 1}`;
+                const kategoriRaw = getVal(["Kategori", "Unit", "Jenis", "Fokus"]) || "HIV";
+                
+                let kategori = "HIV";
+                if (kategoriRaw.toUpperCase().includes("STI")) kategori = "STI";
+                else if (kategoriRaw.toUpperCase().includes("HEP")) kategori = "Hep C";
+                else if (kategoriRaw.toUpperCase().includes("GABUNGAN") || kategoriRaw.toUpperCase().includes("AM") || kategoriRaw.toUpperCase().includes("LATIHAN")) kategori = "Gabungan";
+
+                const tarikh = getVal(["Tarikh", "Masa", "Mula", "Bulan"]) || "2026-01-01";
+                const lokasi = getVal(["Lokasi", "Tempat", "Venue"]) || "PKD Kepong";
+                const pic = getVal(["YANG BERTANGGUNGJAWAB", "Yang Bertanggungjawab", "Bahagian Bertanggungjawab", "Bahagian", "Unit", "Pegawai", "PIC", "Pegawai Bertanggungjawab", "Penyelaras"]) || "Unit CDC Kepong";
+                
+                const sasaran = parseInt(parseCurrency(getVal(["Sasaran", "Target", "Bil Sasaran", "Jumlah Sasaran"]))) || 100;
+                const capaian = parseInt(parseCurrency(getVal(["Capaian", "Pencapaian", "Peserta", "Actual"]))) || 0;
+                
+                // Direct mapping from BAJET & PERBELANJAAN column
+                const bajet = parseCurrency(getVal(["BAJET", "Bajet", "Peruntukan", "Bajet (RM)", "Jumlah Bajet", "PERUNTUKAN BAJET", "RM"]));
+                const perbelanjaan = parseCurrency(getVal(["PERBELANJAAN", "Perbelanjaan", "Kos", "Kos Perbelanjaan", "Terbelanja", "Belanja"]));
+
+                // Strictly read from column STATUS
+                const statusRaw = getVal(["STATUS", "Status", "Pelaksanaan", "Keadaan"]) || "Dalam Perancangan";
+                const status = statusRaw; // Preserves exact value in STATUS column
+
+                const catatan = getVal(["Catatan", "Nota", "Objektif", "Keterangan"]) || "Tiada catatan tambahan.";
+
+                return {
+                    id: index + 1,
+                    nama,
+                    kategori,
+                    tarikh,
+                    lokasi,
+                    pic,
+                    sasaran,
+                    capaian,
+                    bajet,
+                    perbelanjaan,
+                    status,
+                    catatan
+                };
+            });
+        }
+
+        // Populate Status Dropdown dynamically from actual CSV STATUS column values
+        function updateStatusFilterDropdown() {
+            const statusSelect = document.getElementById("filterStatus");
+            const currentSelected = statusSelect.value;
+            
+            // Extract unique status values from actual parsed data
+            const uniqueStatuses = Array.from(new Set(rawProgramData.map(d => d.status).filter(Boolean)));
+            
+            let html = '<option value="ALL">Semua Status (Lajur STATUS)</option>';
+            uniqueStatuses.forEach(st => {
+                html += `<option value="${escapeHtml(st)}">${escapeHtml(st)}</option>`;
+            });
+            
+            statusSelect.innerHTML = html;
+            if (uniqueStatuses.includes(currentSelected)) {
+                statusSelect.value = currentSelected;
+            } else {
+                statusSelect.value = "ALL";
+            }
+        }
+
+        // Filter and Search Handler
+        function applyFilters() {
+            const searchVal = document.getElementById("searchInput").value.toLowerCase();
+            const kategoriVal = document.getElementById("filterKategori").value;
+            const statusVal = document.getElementById("filterStatus").value;
+
+            filteredData = rawProgramData.filter(item => {
+                const matchesSearch = item.nama.toLowerCase().includes(searchVal) ||
+                                      item.lokasi.toLowerCase().includes(searchVal) ||
+                                      item.pic.toLowerCase().includes(searchVal);
+
+                const matchesKategori = (kategoriVal === "ALL") || (item.kategori === kategoriVal);
+                const matchesStatus = (statusVal === "ALL") || (item.status === statusVal);
+
+                return matchesSearch && matchesKategori && matchesStatus;
+            });
+
+            renderDashboardComponents();
+        }
+
+        function initSearchAndFilters() {
+            document.getElementById("searchInput").addEventListener("input", applyFilters);
+            document.getElementById("filterKategori").addEventListener("change", applyFilters);
+            document.getElementById("filterStatus").addEventListener("change", applyFilters);
+        }
+
+        function resetFilters() {
+            document.getElementById("searchInput").value = "";
+            document.getElementById("filterKategori").value = "ALL";
+            document.getElementById("filterStatus").value = "ALL";
+            applyFilters();
+        }
+
+        function updateDashboard() {
+            updateStatusFilterDropdown();
+            filteredData = [...rawProgramData];
+            applyFilters();
+        }
+
+        // Update Statistics & Charts
+        function renderDashboardComponents() {
+            // KPI Calculations based on STATUS column values
+            const totalProg = filteredData.length;
+            
+            // Helper to check if status denotes completion
+            const isCompleted = (s) => {
+                if (!s) return false;
+                const lower = s.toLowerCase();
+                return (lower.includes("selesai") || lower.includes("tamat") || lower.includes("done")) && !lower.includes("belum");
+            };
+
+            const completedProg = filteredData.filter(d => isCompleted(d.status)).length;
+            const completionRate = totalProg > 0 ? Math.round((completedProg / totalProg) * 100) : 0;
+
+            const pendingProg = totalProg - completedProg;
+            const pendingRate = totalProg > 0 ? Math.round((pendingProg / totalProg) * 100) : 0;
+
+            // Calculations for BAJET
+            const totalBudget = filteredData.reduce((sum, d) => sum + d.bajet, 0);
+
+            // Render KPI Text Values
+            document.getElementById("kpiTotalProg").innerText = totalProg;
+            document.getElementById("kpiCompleted").innerText = completedProg;
+            document.getElementById("kpiCompletionRate").innerText = `${completionRate}%`;
+            document.getElementById("kpiProgressBar").style.width = `${completionRate}%`;
+
+            document.getElementById("kpiPendingCount").innerText = pendingProg;
+            document.getElementById("kpiPendingSubtext").innerText = `${pendingProg} program`;
+            document.getElementById("kpiPendingBar").style.width = `${pendingRate}%`;
+
+            document.getElementById("kpiTotalBudget").innerText = `RM ${totalBudget.toLocaleString()}`;
+
+            document.getElementById("recordCounter").innerText = `Menampilkan ${filteredData.length} daripada ${rawProgramData.length} program`;
+
+            // Render Charts and Table
+            renderCharts();
+            renderTable();
+        }
+
+        function renderCharts() {
+            // Chart 1: Status Pelaksanaan Doughnut (Dynamically mapped from STATUS column)
+            const statusCounts = {};
+            filteredData.forEach(d => {
+                const st = d.status || "Tiada Status";
+                statusCounts[st] = (statusCounts[st] || 0) + 1;
+            });
+
+            const paletteColors = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#64748B'];
+
+            if (chartsInstance.status) chartsInstance.status.destroy();
+            const ctxStatus = document.getElementById("statusChart").getContext("2d");
+            chartsInstance.status = new Chart(ctxStatus, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(statusCounts),
+                    datasets: [{
+                        data: Object.values(statusCounts),
+                        backgroundColor: paletteColors.slice(0, Object.keys(statusCounts).length),
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+                    },
+                    cutout: '65%'
+                }
+            });
+
+            // Chart 2: Agihan Bahagian Bertanggungjawab (Bar Chart)
+            const bahagianCounts = {};
+            filteredData.forEach(d => {
+                const bhg = d.pic || "Lain-lain";
+                bahagianCounts[bhg] = (bahagianCounts[bhg] || 0) + 1;
+            });
+
+            const bhgLabels = Object.keys(bahagianCounts);
+            const bhgData = Object.values(bahagianCounts);
+            const bhgColors = ['#0284C7', '#7C3AED', '#0D9488', '#D90429', '#F59E0B', '#10B981', '#6366F1', '#EC4899', '#64748B'];
+
+            if (chartsInstance.kategori) chartsInstance.kategori.destroy();
+            const ctxKategori = document.getElementById("kategoriChart").getContext("2d");
+            chartsInstance.kategori = new Chart(ctxKategori, {
+                type: 'bar',
+                data: {
+                    labels: bhgLabels,
+                    datasets: [{
+                        label: 'Bilangan Program',
+                        data: bhgData,
+                        backgroundColor: bhgColors.slice(0, bhgLabels.length),
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } } },
+                        x: { 
+                            ticks: { 
+                                font: { size: 10 },
+                                callback: function(val) {
+                                    let label = this.getLabelForValue(val);
+                                    return label.length > 14 ? label.substring(0, 14) + '...' : label;
+                                }
+                            } 
+                        }
+                    }
+                }
+            });
+        }
+
+        // Render Program Data Table
+        function renderTable() {
+            const tbody = document.getElementById("programTableBody");
+            tbody.innerHTML = "";
+
+            if (filteredData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center py-10 text-slate-400">
+                            <i class="fa-solid fa-folder-open text-3xl mb-2 text-slate-300"></i>
+                            <p class="font-medium text-sm">Tiada program ditemui mengikut tapisan anda.</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            filteredData.forEach(item => {
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-slate-50/80 transition border-b border-slate-100 cursor-pointer";
+                tr.onclick = () => openModal(item.id);
+
+                // Kategori Badge Styling
+                let katBadge = "bg-slate-100 text-slate-700";
+                if (item.kategori === "HIV") katBadge = "bg-red-50 text-red-700 border border-red-200";
+                else if (item.kategori === "STI") katBadge = "bg-sky-50 text-sky-700 border border-sky-200";
+                else if (item.kategori === "Hep C") katBadge = "bg-purple-50 text-purple-700 border border-purple-200";
+                else if (item.kategori === "Gabungan") katBadge = "bg-teal-50 text-teal-700 border border-teal-200";
+
+                // Dynamic Status Badge Styling based on text
+                let statusBadge = "bg-slate-100 text-slate-700 font-semibold";
+                const stLower = (item.status || "").toLowerCase();
+                if (stLower.includes("selesai") && !stLower.includes("belum")) {
+                    statusBadge = "bg-emerald-100 text-emerald-800 font-semibold";
+                } else if (stLower.includes("langsung") || stLower.includes("jalan") || stLower.includes("proses")) {
+                    statusBadge = "bg-blue-100 text-blue-800 font-semibold animate-pulse";
+                } else if (stLower.includes("rancang") || stLower.includes("plan")) {
+                    statusBadge = "bg-amber-100 text-amber-800 font-semibold";
+                } else if (stLower.includes("tangguh") || stLower.includes("batal")) {
+                    statusBadge = "bg-rose-100 text-rose-800 font-semibold";
+                } else if (stLower.includes("belum")) {
+                    statusBadge = "bg-orange-100 text-orange-800 font-semibold";
+                }
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-semibold text-slate-800">
+                        <div class="line-clamp-2">${escapeHtml(item.nama)}</div>
+                    </td>
+                    <td class="py-3 px-3">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold tracking-wide ${katBadge}">
+                            ${item.kategori}
+                        </span>
+                    </td>
+                    <td class="py-3 px-3 whitespace-nowrap font-medium text-slate-700">
+                        <i class="fa-regular fa-calendar text-slate-400 mr-1"></i>${escapeHtml(item.tarikh)}
+                    </td>
+                    <td class="py-3 px-3">
+                        <div class="text-xs text-slate-600 truncate max-w-[160px]" title="${escapeHtml(item.lokasi)}">
+                            <i class="fa-solid fa-location-dot text-slate-400 mr-1"></i>${escapeHtml(item.lokasi)}
+                        </div>
+                    </td>
+                    <td class="py-3 px-3">
+                        <span class="text-slate-600 font-medium">${escapeHtml(item.pic)}</span>
+                    </td>
+                    <td class="py-3 px-3 text-right font-semibold text-slate-800">
+                        RM ${item.bajet.toLocaleString()}
+                    </td>
+                    <td class="py-3 px-3 text-right font-semibold text-emerald-700">
+                        RM ${item.perbelanjaan.toLocaleString()}
+                    </td>
+                    <td class="py-3 px-3 text-center whitespace-nowrap">
+                        <span class="px-2.5 py-1 rounded-full text-[11px] ${statusBadge}">
+                            ${escapeHtml(item.status)}
+                        </span>
+                    </td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Modal Handlers
+        function openModal(progId) {
+            const item = rawProgramData.find(p => p.id === progId);
+            if (!item) return;
+
+            document.getElementById("modalTitle").innerText = item.nama;
+            document.getElementById("modalKategoriBadge").innerText = item.kategori;
+            document.getElementById("modalTarikh").innerText = item.tarikh;
+            document.getElementById("modalStatus").innerText = item.status;
+            document.getElementById("modalLokasi").innerText = item.lokasi;
+            document.getElementById("modalPIC").innerText = item.pic;
+            document.getElementById("modalBajet").innerText = `RM ${item.bajet.toLocaleString()}`;
+            document.getElementById("modalPerbelanjaan").innerText = `RM ${item.perbelanjaan.toLocaleString()}`;
+            document.getElementById("modalCatatan").innerText = item.catatan || "Tiada perincian tambahan.";
+
+            document.getElementById("detailModal").classList.remove("hidden");
+        }
+
+        function closeModal() {
+            document.getElementById("detailModal").classList.add("hidden");
+        }
+
+        // Utility to export current filtered data to CSV
+        function exportCSV() {
+            if (filteredData.length === 0) return;
+            
+            const csv = Papa.unparse(filteredData.map(d => ({
+                "Nama Program": d.nama,
+                "Kategori": d.kategori,
+                "Tarikh": d.tarikh,
+                "Lokasi": d.lokasi,
+                "Yang Bertanggungjawab": d.pic,
+                "Bajet (RM)": d.bajet,
+                "Perbelanjaan (RM)": d.perbelanjaan,
+                "Status": d.status,
+                "Catatan": d.catatan
+            })));
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Program_HIV_STI_HepC_Kepong_${new Date().toISOString().slice(0,10)}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
